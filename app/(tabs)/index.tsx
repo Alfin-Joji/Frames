@@ -1,70 +1,103 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, Image, StyleSheet, RefreshControl } from 'react-native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+interface Photo {
+  id: string;
+  url_s: string;
 }
 
+const HomeScreen = () => {
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    fetchCachedPhotos();
+  }, []);
+
+  const fetchCachedPhotos = async () => {
+    try {
+      const cachedPhotos = await AsyncStorage.getItem('cachedPhotos');
+      if (cachedPhotos) {
+        setPhotos(JSON.parse(cachedPhotos));
+      } else {
+        fetchPhotos();
+      }
+    } catch (error) {
+      console.error('Error fetching cached photos:', error);
+      fetchPhotos();
+    }
+  };
+
+  const fetchPhotos = async () => {
+    try {
+      const response = await axios.get(
+        'https://api.flickr.com/services/rest/?method=flickr.photos.getRecent&per_page=20&page=1&api_key=6f102c62f41998d151e5a1b48713cf13&format=json&nojsoncallback=1&extras=url_s'
+      );
+      const fetchedPhotos = response.data.photos.photo;
+      setPhotos(fetchedPhotos);
+      AsyncStorage.setItem('cachedPhotos', JSON.stringify(fetchedPhotos));
+    } catch (error) {
+      console.error('Error fetching photos from API:', error);
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPhotos();
+    setRefreshing(false);
+  };
+
+  const renderItem = ({ item }: { item: Photo }) => (
+    <View style={styles.photoContainer}>
+      <Image source={{ uri: item.url_s }} style={styles.photo} />
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.heading}>FRAMES</Text>
+      <FlatList
+        data={photos}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        contentContainerStyle={styles.flatListContent}
+      />
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingTop: 50,
+    alignItems: 'center', 
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  flatListContent: {
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  photoContainer: {
+    margin: 5,
+    alignItems: 'center', 
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  photo: {
+    width: 150,
+    height: 150,
+    resizeMode: 'cover', 
+    borderRadius: 10, 
   },
 });
+
+export default HomeScreen;
