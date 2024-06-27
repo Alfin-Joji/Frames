@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity, Modal, ScrollView, Dimensions } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AntDesign } from '@expo/vector-icons';
-
+import * as FileSystem from 'expo-file-system';
 
 interface Photo {
   id: string;
@@ -16,7 +16,7 @@ const HomeScreen = () => {
   const [photos, setPhotos] = useState<Record<number, Photo[]>>({});
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [totalPages, setTotalPages] = useState(100); // Set a default total pages, can be updated based on API response
+  const [totalPages, setTotalPages] = useState(100);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -31,7 +31,7 @@ const HomeScreen = () => {
       if (cachedPhotos) {
         setPhotos((prevPhotos) => ({
           ...prevPhotos,
-          [page]: JSON.parse(cachedPhotos)
+          [page]: JSON.parse(cachedPhotos),
         }));
       } else {
         fetchPhotos(page, category);
@@ -55,10 +55,10 @@ const HomeScreen = () => {
         const fetchedPhotos = response.data.photos.photo;
         setPhotos((prevPhotos) => ({
           ...prevPhotos,
-          [page]: fetchedPhotos
+          [page]: fetchedPhotos,
         }));
         AsyncStorage.setItem(`cachedPhotos-${category}-page-${page}`, JSON.stringify(fetchedPhotos));
-        setTotalPages(response.data.photos.pages || totalPages); // Update total pages based on API response
+        setTotalPages(response.data.photos.pages || totalPages);
       } else {
         console.error('Unexpected response structure', response.data);
       }
@@ -78,6 +78,20 @@ const HomeScreen = () => {
   const handlePhotoPress = (photo: Photo) => {
     setSelectedPhoto(photo);
     setModalVisible(true);
+  };
+
+  const downloadImage = async (photo: Photo) => {
+    try {
+      const { uri } = await FileSystem.downloadAsync(
+        photo.url_s,
+        `${FileSystem.documentDirectory}${photo.id}.jpg`
+      );
+      await AsyncStorage.setItem(`downloadedImage-${photo.id}`, uri);
+      console.log('Image downloaded:', uri);
+      alert('Image downloaded and saved successfully!');
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
   };
 
   const renderPaginationButtons = () => {
@@ -117,73 +131,76 @@ const HomeScreen = () => {
     );
   };
 
-  const renderItem = ({ item }: { item: Photo }) => (
-    <TouchableOpacity onPress={() => handlePhotoPress(item)} style={styles.photoContainer}>
-      <Image source={{ uri: item.url_s }} style={styles.photo} />
+  const renderDownloadButton = () => (
+    <TouchableOpacity onPress={() => downloadImage(selectedPhoto!)} style={styles.downloadButtonModal}>
+      <Text style={styles.downloadButtonText}>Download</Text>
     </TouchableOpacity>
   );
 
-  const renderCategoryBubbles = () => {
-    return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.categoryContainer, { height: 40 }]} // Adjust height as needed
-      >   
+  const renderModalContent = () => (
+    <View style={styles.modalContainer}>
+      <Image source={{ uri: selectedPhoto?.url_s }} style={styles.modalPhoto} />
+      {/* {renderDownloadButton()} */}
+    </View>
+  );
+
+  const renderCategoryBubbles = () => (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={[styles.categoryContainer, { height: 40 }]}
+    >
       {categories.map((category) => (
-          <TouchableOpacity
-            key={category}
+        <TouchableOpacity
+          key={category}
+          style={[
+            styles.categoryBubble,
+            selectedCategory === category && styles.selectedCategoryBubble,
+          ]}
+          onPress={() => {
+            setSelectedCategory(category);
+            setPage(1); 
+          }}
+        >
+          <Text
             style={[
-              styles.categoryBubble,
-              selectedCategory === category && styles.selectedCategoryBubble
-            ]}
-            onPress={() => {
-              setSelectedCategory(category);
-              setPage(1); // Reset to first page on category change
-            }}
-          >
-            <Text style={[
               styles.categoryText,
-              selectedCategory === category && styles.selectedCategoryText
-            ]}>{category}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    );
-  };
+              selectedCategory === category && styles.selectedCategoryText,
+            ]}
+          >
+            {category}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>FRAMES</Text>
       {renderCategoryBubbles()}
       <FlatList
         data={photos[page] || []}
-        renderItem={renderItem}
+        renderItem={({ item }) => (
+          <TouchableOpacity onPress={() => handlePhotoPress(item)} style={styles.photoContainer}>
+            <Image source={{ uri: item.url_s }} style={styles.photo} />
+          </TouchableOpacity>
+        )}
         keyExtractor={(item) => item.id}
-        numColumns={2}
+        numColumns={Dimensions.get('window').width > 600 ? 4 : 2} 
         contentContainerStyle={styles.flatListContent}
         ListFooterComponent={renderPaginationButtons}
         onEndReachedThreshold={0.5}
       />
-      {selectedPhoto && (
-        <Modal
-          visible={modalVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <TouchableOpacity
-              style={styles.modalBackground}
-              onPress={() => setModalVisible(false)}
-            >
-              <View style={styles.modalContent}>
-                <Image source={{ uri: selectedPhoto.url_s }} style={styles.modalPhoto} />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </Modal>
-      )}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableOpacity style={styles.modalBackground} onPress={() => setModalVisible(false)}>
+          {renderModalContent()}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -192,18 +209,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 50,
+    paddingTop: 20,
     alignItems: 'center',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    borderRadius: 7,
-    backgroundColor: 'black', // Set background color to black
-    color: 'white', // Set text color to white
-    paddingVertical: 7, // Adjust padding as needed
-    paddingHorizontal: 120, // Adjust padding as needed
   },
   categoryContainer: {
     marginBottom: 20,
@@ -232,16 +239,29 @@ const styles = StyleSheet.create({
   photoContainer: {
     margin: 5,
     alignItems: 'center',
+    position: 'relative',
   },
   photo: {
-    width: 150,
-    height: 150,
+    width: Dimensions.get('window').width > 600 ? 150 : Dimensions.get('window').width / 2 - 20,
+    height: Dimensions.get('window').width > 600 ? 150 : Dimensions.get('window').width / 2 - 20,
     resizeMode: 'cover',
     borderRadius: 10,
   },
+  downloadButtonModal: {
+    position: 'absolute',
+    bottom: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 10,
+    borderRadius: 5,
+    alignSelf: 'center',
+  },
+  downloadButtonText: {
+    color: 'white',
+    fontSize: 14,
+  },
   pagination: {
     flexDirection: 'row',
-    alignItems: 'center', // Align items in the center vertically
+    alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 20,
   },
@@ -266,30 +286,25 @@ const styles = StyleSheet.create({
   iconButton: {
     marginHorizontal: 10,
   },
-  modalContainer: {
+  modalBackground: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalBackground: {
-    width: '100%',
-    height: '100%',
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-  },
   modalPhoto: {
-    width: 300,
-    height: 300,
+    width: Dimensions.get('window').width > 600 ? 300 : Dimensions.get('window').width - 40,
+    height: Dimensions.get('window').width > 600 ? 300 : Dimensions.get('window').width - 40,
     resizeMode: 'contain',
+    borderRadius: 10,
   },
 });
 
 export default HomeScreen;
-
-

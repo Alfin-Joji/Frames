@@ -4,6 +4,7 @@ import { TabBarIcon } from '@/components/navigation/TabBarIcon';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { FontAwesome } from '@expo/vector-icons';
+import { AntDesign } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -28,7 +29,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="SearchScreen"
         options={{
-          title: 'Search',
+          title: 'home',
           tabBarIcon: ({ color, focused }) => (
           <FontAwesome name="search" size={24} color={color} /> 
           ),
@@ -36,14 +37,25 @@ export default function TabLayout() {
        />
 
       <Tabs.Screen
-        name="AboutScreen"
+        name="UploadImage"
         options={{
-          title: 'Home',
+          title: 'UploadImage',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'code-slash' : 'code-slash-outline'} color={color} />
+            <AntDesign name="upload" size={24} color={color} />        
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="AboutScreen"
+        options={{
+          title: 'home',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'code-slash' : 'code-slash-outline'} color={color}/>
+            ),
+        }}
+      />
+
     </Tabs>
   );
 }

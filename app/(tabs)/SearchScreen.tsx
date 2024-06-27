@@ -23,36 +23,29 @@ const SearchScreen = () => {
       } else {
         setPhotos([]);
       }
-    }, 400); // Adjust delay as needed (e.g., 1000ms)
+    }, 400);
 
     return () => clearTimeout(delayedSearch);
   }, [query]);
 
   useEffect(() => {
-    // Load search history from AsyncStorage or any storage mechanism
-    // For demonstration, using local storage in memory
-    const savedHistory = ['Nature', 'Technology', 'Travel']; // Example initial history
+ 
+    const savedHistory = ['Nature', 'Technology', 'Travel']; 
     setSearchHistory(savedHistory);
   }, []);
 
   const addToHistory = (searchTerm: string) => {
-    // Add search term to history if not already present
     if (!searchHistory.includes(searchTerm)) {
       const updatedHistory = [...searchHistory, searchTerm];
       setSearchHistory(updatedHistory);
-      // Save updated history to AsyncStorage or any storage mechanism
-      // For demonstration, saving to local storage in memory
-      // Replace with your own storage mechanism as needed
+      
     }
   };
 
   const removeFromHistory = (searchTerm: string) => {
-    // Remove search term from history
     const updatedHistory = searchHistory.filter(item => item !== searchTerm);
     setSearchHistory(updatedHistory);
-    // Save updated history to AsyncStorage or any storage mechanism
-    // For demonstration, saving to local storage in memory
-    // Replace with your own storage mechanism as needed
+  
   };
 
   const searchPhotos = async (searchQuery: string) => {
@@ -69,7 +62,7 @@ const SearchScreen = () => {
       } else {
         setPhotos([]);
       }
-      addToHistory(searchQuery); // Add search term to history when searching
+      addToHistory(searchQuery); 
     } catch (error) {
       console.error('Error searching photos from API:', error);
       setPhotos([]);
