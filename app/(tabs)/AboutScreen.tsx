@@ -41,13 +41,13 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent black overlay
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
   contentContainer: {
-    backgroundColor: 'rgba(230, 230, 230, 0.8)', // Semi-transparent light grey background for content
+    backgroundColor: 'rgba(230, 230, 230, 0.8)',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 10,
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: 'bold',
     marginBottom: 20,
-    color: '#333', // Dark text color
+    color: '#333', 
   },
   content: {
     fontWeight: 'bold',
